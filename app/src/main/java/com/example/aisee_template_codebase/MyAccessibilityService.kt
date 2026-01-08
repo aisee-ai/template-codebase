@@ -44,7 +44,7 @@ class MyAccessibilityService : AccessibilityService() {
         // setupVoiceActivation()
 
         // Initialize ML Kit - COMMENT THIS LINE TO DISABLE ML & OVERLAY
-        setupMlKit()
+//        setupMlKit()
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
