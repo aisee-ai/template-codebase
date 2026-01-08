@@ -1,0 +1,3 @@
+[submodule "vad_module"]
+	path = vad_module
+	url = https://github.com/aisee-ai/voice-activation-uart.git
