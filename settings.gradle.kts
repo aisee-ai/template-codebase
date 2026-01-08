@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Aisee-template-codebase"
 include(":app")
- 
+include(":vad_module")
