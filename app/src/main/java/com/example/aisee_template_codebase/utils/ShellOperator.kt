@@ -1,6 +1,6 @@
 //Utility command to execute shell commands. NOT IMPORTANT
 
-package com.example.aisee_template_codebase
+package com.example.aisee_template_codebase.utils
 
 import android.util.Log
 

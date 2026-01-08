@@ -97,7 +97,8 @@ class MlKitProcessor(private val context: Context) : ImageAnalysis.Analyzer {
     override fun analyze(imageProxy: ImageProxy) {
         val mediaImage = imageProxy.image
         if (mediaImage != null) {
-            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+            val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+            val image = InputImage.fromMediaImage(mediaImage, rotationDegrees)
 
             detector.process(image)
                 .addOnSuccessListener { detectedObjects ->
@@ -106,28 +107,41 @@ class MlKitProcessor(private val context: Context) : ImageAnalysis.Analyzer {
                     val labels = mutableListOf<String>()
 
                     // Use the container size or overlay size for scaling
-                    val targetWidth = overlayView?.width ?: 1
-                    val targetHeight = overlayView?.height ?: 1
+                    val targetWidth = overlayView?.width ?: 0
+                    val targetHeight = overlayView?.height ?: 0
 
-                    val scaleX = targetWidth.toFloat() / mediaImage.width
-                    val scaleY = targetHeight.toFloat() / mediaImage.height
-                    
-                    for (obj in detectedObjects) {
-                        val rect = obj.boundingBox
-                        val scaledRect = Rect(
-                            (rect.left * scaleX).toInt(),
-                            (rect.top * scaleY).toInt(),
-                            (rect.right * scaleX).toInt(),
-                            (rect.bottom * scaleY).toInt()
-                        )
-                        boxes.add(scaledRect)
+                    if (targetWidth > 0 && targetHeight > 0) {
+                        // Adjust image dimensions based on rotation
+                        val imageWidth: Int
+                        val imageHeight: Int
+                        if (rotationDegrees == 90 || rotationDegrees == 270) {
+                            imageWidth = mediaImage.height
+                            imageHeight = mediaImage.width
+                        } else {
+                            imageWidth = mediaImage.width
+                            imageHeight = mediaImage.height
+                        }
+
+                        val scaleX = targetWidth.toFloat() / imageWidth
+                        val scaleY = targetHeight.toFloat() / imageHeight
                         
-                        val label = obj.labels.firstOrNull()?.text ?: "Object"
-                        labels.add(label)
-                    }
+                        for (obj in detectedObjects) {
+                            val rect = obj.boundingBox
+                            val scaledRect = Rect(
+                                (rect.left * scaleX).toInt(),
+                                (rect.top * scaleY).toInt(),
+                                (rect.right * scaleX).toInt(),
+                                (rect.bottom * scaleY).toInt()
+                            )
+                            boxes.add(scaledRect)
+                            
+                            val label = obj.labels.firstOrNull()?.text ?: "Object"
+                            labels.add(label)
+                        }
 
-                    mainHandler.post {
-                        overlayView?.updateBoxes(boxes, labels)
+                        mainHandler.post {
+                            overlayView?.updateBoxes(boxes, labels)
+                        }
                     }
                 }
                 .addOnFailureListener { e ->

@@ -5,13 +5,22 @@ import android.content.Intent
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import androidx.camera.core.UseCase
+import com.example.aisee_template_codebase.camera.AnalysisHandler
+import com.example.aisee_template_codebase.camera.CameraCore
+import com.example.aisee_template_codebase.camera.PhotoHandler
 import com.example.aisee_template_codebase.ml.MlKitProcessor
 import com.example.voice_activation_uart.VoiceActivation
 
 class MyAccessibilityService : AccessibilityService() {
 
     private var voiceActivation: VoiceActivation? = null
-    private var cameraCapture: CameraCapture? = null
+    
+    // New Modular Camera System
+    private var cameraCore: CameraCore? = null
+    private var photoHandler: PhotoHandler? = null
+    private var analysisHandler: AnalysisHandler? = null
+    
     private var mlKitProcessor: MlKitProcessor? = null
 
     // Do NOT CHANGE THIS
@@ -21,14 +30,21 @@ class MyAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         Log.d(TAG, "Accessibility Service Connected")
         
-        // Initialize Camera
-        cameraCapture = CameraCapture(this)
+        // 1. Initialize the Camera System
+        cameraCore = CameraCore(this)
+        photoHandler = PhotoHandler(this)
+        analysisHandler = AnalysisHandler()
+
+        // 2. Start with just Photo Capture (Default)
+        // This makes the camera ready to take pictures immediately.
+        val defaultUseCases = listOf(photoHandler!!.getImageCapture())
+        cameraCore?.bind(defaultUseCases)
 
         // Initialize Voice Activity Detection
-        setupVoiceActivation()
+        // setupVoiceActivation()
 
         // Initialize ML Kit - COMMENT THIS LINE TO DISABLE ML & OVERLAY
-//        setupMlKit()
+        setupMlKit()
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
@@ -38,8 +54,8 @@ class MyAccessibilityService : AccessibilityService() {
             
             if (event.keyCode == KeyEvent.KEYCODE_F2) {
                 Log.d(TAG, "F2 Pressed: Taking Photo...")
-                // Custom logic here, we have used taking a photo as an example
-                cameraCapture?.takePhoto()
+                // Use the dedicated PhotoHandler
+                photoHandler?.takePhoto()
                 return true
             }
         }
@@ -51,12 +67,28 @@ class MyAccessibilityService : AccessibilityService() {
             mlKitProcessor = MlKitProcessor(this)
             mlKitProcessor?.start() // Starts the overlay
             
-            // Connect the ML processor and its SurfaceProvider (for video) to the camera stream
             if (mlKitProcessor != null) {
-                cameraCapture?.setAnalyzer(
-                    mlKitProcessor!!,
-                    mlKitProcessor?.getSurfaceProvider()
-                )
+                // 1. Create the Analysis Use Cases, the model is configured in mlKitProcessor's detector.
+                val analysisUseCase = analysisHandler?.createAnalysis(mlKitProcessor!!)
+                
+                // 2. Create the Preview (UI) Use Case
+                val surfaceProvider = mlKitProcessor?.getSurfaceProvider()
+                var previewUseCase: androidx.camera.core.Preview? = null
+                if (surfaceProvider != null) {
+                    previewUseCase = analysisHandler?.createPreview(surfaceProvider)
+                }
+
+                // 3. Bind EVERYTHING together (Photo + Analysis + Preview)
+                val allUseCases = mutableListOf<UseCase>()
+                
+                // Always include Photo Capture
+                allUseCases.add(photoHandler!!.getImageCapture())
+                
+                if (analysisUseCase != null) allUseCases.add(analysisUseCase)
+                if (previewUseCase != null) allUseCases.add(previewUseCase)
+
+                // Re-bind to apply the new parallel configuration
+                cameraCore?.bind(allUseCases)
             }
             Log.d(TAG, "ML Kit initialized")
         } catch (e: Exception) {
@@ -73,7 +105,6 @@ class MyAccessibilityService : AccessibilityService() {
                     is VoiceActivation.Event.Command -> {
                         Log.i(TAG, "cmdId=${e.cmdId}")
                         if (e.cmdId == CMD_HEY_I_SEE) {
-                            // Add your custom logic here
                             Log.d(TAG, "Wake word detected!")
                         }
                     }
@@ -98,7 +129,8 @@ class MyAccessibilityService : AccessibilityService() {
         voiceActivation?.stop()
         
         mlKitProcessor?.stop()
-        cameraCapture?.onDestroy()
+        analysisHandler?.shutdown()
+        cameraCore?.onDestroy()
         
         return super.onUnbind(intent)
     }
