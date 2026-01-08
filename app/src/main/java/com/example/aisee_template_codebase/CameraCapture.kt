@@ -4,9 +4,12 @@ import android.content.Context
 import android.media.MediaScannerConnection
 import android.os.Environment
 import android.util.Log
+import android.util.Size
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -22,12 +25,14 @@ class CameraCapture(private val context: Context) : LifecycleOwner {
 
     private val lifecycleRegistry: LifecycleRegistry = LifecycleRegistry(this)
     private var imageCapture: ImageCapture? = null
+    private var imageAnalysis: ImageAnalysis? = null
+    private var preview: Preview? = null
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private var currentAnalyzer: ImageAnalysis.Analyzer? = null
+    private var currentSurfaceProvider: Preview.SurfaceProvider? = null
 
     init {
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
-        // We set it to STARTED immediately so the camera binds. 
-        // In a service, we usually want it active as long as the service is bound.
         lifecycleRegistry.currentState = Lifecycle.State.STARTED 
         startCamera()
     }
@@ -38,42 +43,77 @@ class CameraCapture(private val context: Context) : LifecycleOwner {
         cameraProviderFuture.addListener({
             try {
                 val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-
-                // Set up the image capture use case
-                imageCapture = ImageCapture.Builder().build()
-
-                // Select back camera
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-                try {
-                    // Unbind use cases before rebinding
-                    cameraProvider.unbindAll()
-
-                    // Bind use cases to camera
-                    cameraProvider.bindToLifecycle(
-                        this, cameraSelector, imageCapture
-                    )
-                    
-                    Log.d(TAG, "Camera initialized and bound.")
-
-                } catch (exc: Exception) {
-                    Log.e(TAG, "Use case binding failed", exc)
-                }
-
+                bindUseCases(cameraProvider)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to get camera provider", e)
             }
         }, ContextCompat.getMainExecutor(context))
     }
 
+    private fun bindUseCases(cameraProvider: ProcessCameraProvider) {
+        try {
+            // Unbind all use cases before rebinding to avoid collisions or resource locks
+            cameraProvider.unbindAll()
+
+            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            val useCases = mutableListOf<androidx.camera.core.UseCase>()
+
+            // 1. ImageCapture - High quality for photos
+            imageCapture = ImageCapture.Builder().build()
+            useCases.add(imageCapture!!)
+
+            // 2. ImageAnalysis (if configured) - Lower resolution for performance/ML
+            if (currentAnalyzer != null) {
+                imageAnalysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setTargetResolution(Size(640, 480)) // Use VGA for analysis to save resources
+                    .build()
+                
+                imageAnalysis?.setAnalyzer(cameraExecutor, currentAnalyzer!!)
+                useCases.add(imageAnalysis!!)
+                Log.d(TAG, "Binding ImageAnalysis")
+            }
+
+            // 3. Preview (if configured) - Shows video on UI
+            if (currentSurfaceProvider != null) {
+                preview = Preview.Builder().build()
+                preview?.setSurfaceProvider(currentSurfaceProvider!!)
+                useCases.add(preview!!)
+                Log.d(TAG, "Binding Preview")
+            }
+
+            // Bind use cases to camera - CameraX handles parallel execution
+            cameraProvider.bindToLifecycle(
+                this, cameraSelector, *useCases.toTypedArray()
+            )
+            
+            Log.d(TAG, "Camera initialized and bound. Use cases: ${useCases.size}")
+
+        } catch (exc: Exception) {
+            Log.e(TAG, "Use case binding failed", exc)
+        }
+    }
+
+    fun setAnalyzer(analyzer: ImageAnalysis.Analyzer, surfaceProvider: Preview.SurfaceProvider? = null) {
+        currentAnalyzer = analyzer
+        currentSurfaceProvider = surfaceProvider
+        // Re-bind to apply changes
+        startCamera()
+    }
+
+    fun removeAnalyzer() {
+        currentAnalyzer = null
+        currentSurfaceProvider = null
+        startCamera()
+    }
+
     fun takePhoto() {
         val imageCapture = imageCapture
         if (imageCapture == null) {
-            Log.e(TAG, "ImageCapture is not initialized yet.")
+            Log.e(TAG, "ImageCapture is not initialized yet. Please wait for camera binding.")
             return
         }
 
-        // Use the public Pictures directory so it's visible in Gallery
         val storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
         if (!storageDir.exists()) {
             storageDir.mkdirs()
@@ -97,8 +137,6 @@ class CameraCapture(private val context: Context) : LifecycleOwner {
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     Log.d(TAG, "Photo capture succeeded: ${photoFile.absolutePath}")
-                    
-                    // Trigger media scan so the photo appears in the Gallery app
                     MediaScannerConnection.scanFile(
                         context,
                         arrayOf(photoFile.absolutePath),

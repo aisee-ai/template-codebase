@@ -5,12 +5,14 @@ import android.content.Intent
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import com.example.aisee_template_codebase.ml.MlKitProcessor
 import com.example.voice_activation_uart.VoiceActivation
 
 class MyAccessibilityService : AccessibilityService() {
 
     private var voiceActivation: VoiceActivation? = null
     private var cameraCapture: CameraCapture? = null
+    private var mlKitProcessor: MlKitProcessor? = null
 
     // Do NOT CHANGE THIS
     private val VAD_DEVICE_PATH = "/dev/ttyS0"
@@ -23,7 +25,10 @@ class MyAccessibilityService : AccessibilityService() {
         cameraCapture = CameraCapture(this)
 
         // Initialize Voice Activity Detection
-        // setupVoiceActivation()
+        setupVoiceActivation()
+
+        // Initialize ML Kit - COMMENT THIS LINE TO DISABLE ML & OVERLAY
+//        setupMlKit()
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
@@ -33,8 +38,7 @@ class MyAccessibilityService : AccessibilityService() {
             
             if (event.keyCode == KeyEvent.KEYCODE_F2) {
                 Log.d(TAG, "F2 Pressed: Taking Photo...")
-
-                //Custom logic here, we have used taking a photo as an example
+                // Custom logic here, we have used taking a photo as an example
                 cameraCapture?.takePhoto()
                 return true
             }
@@ -42,6 +46,24 @@ class MyAccessibilityService : AccessibilityService() {
         return false
     }
     
+    private fun setupMlKit() {
+        try {
+            mlKitProcessor = MlKitProcessor(this)
+            mlKitProcessor?.start() // Starts the overlay
+            
+            // Connect the ML processor and its SurfaceProvider (for video) to the camera stream
+            if (mlKitProcessor != null) {
+                cameraCapture?.setAnalyzer(
+                    mlKitProcessor!!,
+                    mlKitProcessor?.getSurfaceProvider()
+                )
+            }
+            Log.d(TAG, "ML Kit initialized")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to setup ML Kit", e)
+        }
+    }
+
     private fun setupVoiceActivation() {
         try {
             voiceActivation = VoiceActivation.create(VAD_DEVICE_PATH, VAD_BAUD_RATE)
@@ -52,6 +74,7 @@ class MyAccessibilityService : AccessibilityService() {
                         Log.i(TAG, "cmdId=${e.cmdId}")
                         if (e.cmdId == CMD_HEY_I_SEE) {
                             // Add your custom logic here
+                            Log.d(TAG, "Wake word detected!")
                         }
                     }
                     is VoiceActivation.Event.Error -> Log.e(TAG, "UART error: ${e.message}")
@@ -73,7 +96,10 @@ class MyAccessibilityService : AccessibilityService() {
     override fun onUnbind(intent: Intent?): Boolean {
         Log.d(TAG, "Accessibility Service Unbound")
         voiceActivation?.stop()
+        
+        mlKitProcessor?.stop()
         cameraCapture?.onDestroy()
+        
         return super.onUnbind(intent)
     }
 
