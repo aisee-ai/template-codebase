@@ -34,7 +34,7 @@ In `MainActivity.kt`, we use a utility called `ShellOperator` to run root comman
 ---
 
 ## 4. How to Trigger Actions
-The device interacts with the world through **Physical Buttons** and **Voice**.
+The device interacts with the world through **Physical Buttons**, **Voice**, and **LEDs**.
 
 ### Physical Buttons
 *   **File:** `MyAccessibilityService.kt`
@@ -54,6 +54,30 @@ if (event.keyCode == KeyEvent.KEYCODE_F2) {
 *   **Function:** `setupVoiceActivation`
 
 We use the `:vad_module` to listen for wake words (like "Hey I See") via the device's internal UART connection. When the wake word command (`CMD_HEY_I_SEE`) is detected, you can trigger actions just like a button press.
+
+### LED Control
+*   **File:** `utils/LEDUtils.java`
+*   **Purpose:** Provides simple static methods to control the device's LEDs.
+
+To use it, call `LEDUtils.setled()` with one of the provided static color variables:
+*   `LEDUtils.FRONT`
+*   `LEDUtils.BACK_RED`
+*   `LEDUtils.BACK_BLUE`
+
+**Example (Turn on the FRONT LED):
+```java
+// To turn the FRONT LED on
+LEDUtils.setled(LEDUtils.FRONT, true);
+
+// To turn it off
+LEDUtils.setled(LEDUtils.FRONT, false);
+```
+
+There is also an overloaded method to make the LEDs blink:
+```java
+// Blink the BACK LED every 500ms on, 500ms off
+LEDUtils.setled(LEDUtils.FRONT, 500, 500, true);
+```
 
 ---
 

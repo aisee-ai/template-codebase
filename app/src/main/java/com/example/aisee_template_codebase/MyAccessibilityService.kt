@@ -2,6 +2,8 @@ package com.example.aisee_template_codebase
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
@@ -10,6 +12,7 @@ import com.example.aisee_template_codebase.camera.AnalysisHandler
 import com.example.aisee_template_codebase.camera.CameraCore
 import com.example.aisee_template_codebase.camera.PhotoHandler
 import com.example.aisee_template_codebase.ml.MlKitProcessor
+import com.example.aisee_template_codebase.utils.LEDUtils
 import com.example.voice_activation_uart.VoiceActivation
 
 class MyAccessibilityService : AccessibilityService() {
@@ -54,7 +57,13 @@ class MyAccessibilityService : AccessibilityService() {
             
             if (event.keyCode == KeyEvent.KEYCODE_F2) {
                 Log.d(TAG, "F2 Pressed: Taking Photo...")
-                // Use the dedicated PhotoHandler
+                
+                // Blink FRONT LED to indicate photo capture
+                LEDUtils.setled(LEDUtils.FRONT, true)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    LEDUtils.setled(LEDUtils.FRONT, false)
+                }, 500) // Turn off after 500ms
+
                 photoHandler?.takePhoto()
                 return true
             }
@@ -68,7 +77,7 @@ class MyAccessibilityService : AccessibilityService() {
             mlKitProcessor?.start() // Starts the overlay
             
             if (mlKitProcessor != null) {
-                // 1. Create the Analysis Use Cases, the model is configured in mlKitProcessor's detector.
+                // 1. Create the Analysis Use Cases
                 val analysisUseCase = analysisHandler?.createAnalysis(mlKitProcessor!!)
                 
                 // 2. Create the Preview (UI) Use Case
