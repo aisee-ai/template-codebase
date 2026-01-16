@@ -81,6 +81,59 @@ class PhotoHandler(private val context: Context) {
         )
     }
 
+    /**
+     * Triggers the photo capture with a custom callback.
+     */
+    fun takePhoto(callback: ImageCapture.OnImageSavedCallback) {
+        val capture = imageCapture
+        if (capture == null) {
+            Log.e(TAG, "ImageCapture use case is null. Is the camera bound?")
+            return
+        }
+
+        val storageDir =
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+        if (!storageDir.exists()) {
+            storageDir.mkdirs()
+        }
+
+        val photoFile = File(
+            storageDir,
+            SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.US)
+                .format(System.currentTimeMillis()) + ".jpg"
+        )
+
+        val outputOptions =
+            ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        capture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(context),
+            object : ImageCapture.OnImageSavedCallback {
+
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    Log.d(TAG, "Photo capture succeeded: ${photoFile.absolutePath}")
+
+                    MediaScannerConnection.scanFile(
+                        context,
+                        arrayOf(photoFile.absolutePath),
+                        arrayOf("image/jpeg"),
+                        null
+                    )
+
+                    // Forward result to caller
+                    callback.onImageSaved(output)
+                }
+
+                override fun onError(exc: ImageCaptureException) {
+                    Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+
+                    // Forward error to caller
+                    callback.onError(exc)
+                }
+            }
+        )
+    }
     companion object {
         private const val TAG = "PhotoHandler"
     }
