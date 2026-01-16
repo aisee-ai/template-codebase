@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.aisee_template_codebase"
+    namespace = "org.aisee.template_codebase"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.example.aisee_template_codebase"
+        applicationId = "org.aisee.template_codebase"
         minSdk = 31
         targetSdk = 36
         versionCode = 1

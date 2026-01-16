@@ -1,4 +1,4 @@
-package com.example.aisee_template_codebase.ml
+package org.aisee.template_codebase.ml
 
 import android.content.Context
 import android.graphics.PixelFormat
@@ -9,6 +9,7 @@ import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 import android.widget.FrameLayout
+import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -93,7 +94,7 @@ class MlKitProcessor(private val context: Context) : ImageAnalysis.Analyzer {
         }
     }
 
-    @androidx.annotation.OptIn(ExperimentalGetImage::class)
+    @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
         val mediaImage = imageProxy.image
         if (mediaImage != null) {

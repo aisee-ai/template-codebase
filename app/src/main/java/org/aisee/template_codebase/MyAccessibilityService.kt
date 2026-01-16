@@ -1,53 +1,30 @@
-package com.example.aisee_template_codebase
+package org.aisee.template_codebase
 
 import android.accessibilityservice.AccessibilityService
+import android.annotation.SuppressLint
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import androidx.camera.core.Preview
 import androidx.camera.core.UseCase
-import com.example.aisee_template_codebase.camera.AnalysisHandler
-import com.example.aisee_template_codebase.camera.CameraCore
-import com.example.aisee_template_codebase.camera.PhotoHandler
-import com.example.aisee_template_codebase.ml.MlKitProcessor
-import com.example.aisee_template_codebase.utils.LEDUtils
-import com.example.voice_activation_uart.VoiceActivation
+import org.aisee.template_codebase.camera.AnalysisHandler
+import org.aisee.template_codebase.camera.CameraCore
+import org.aisee.template_codebase.camera.PhotoHandler
+import org.aisee.template_codebase.ml.MlKitProcessor
 
+@SuppressLint("AccessibilityPolicy")
 class MyAccessibilityService : AccessibilityService() {
-
-    private var voiceActivation: VoiceActivation? = null
     
-    // New Modular Camera System
+    // Modular Camera System
     private var cameraCore: CameraCore? = null
     private var photoHandler: PhotoHandler? = null
     private var analysisHandler: AnalysisHandler? = null
     
     private var mlKitProcessor: MlKitProcessor? = null
 
-    // Do NOT CHANGE THIS
-    private val VAD_DEVICE_PATH = "/dev/ttyS0"
-    private val VAD_BAUD_RATE = 9600
-
     override fun onServiceConnected() {
         Log.d(TAG, "Accessibility Service Connected")
-        
-        // 1. Initialize the Camera System
-        cameraCore = CameraCore(this)
-        photoHandler = PhotoHandler(this)
-        analysisHandler = AnalysisHandler()
-
-        // 2. Start with just Photo Capture (Default)
-        // This makes the camera ready to take pictures immediately.
-        val defaultUseCases = listOf(photoHandler!!.getImageCapture())
-        cameraCore?.bind(defaultUseCases)
-
-        // Initialize Voice Activity Detection
-        // setupVoiceActivation()
-
-        // Initialize ML Kit - COMMENT THIS LINE TO DISABLE ML & OVERLAY
-//        setupMlKit()
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
@@ -57,12 +34,6 @@ class MyAccessibilityService : AccessibilityService() {
             
             if (event.keyCode == KeyEvent.KEYCODE_F2) {
                 Log.d(TAG, "F2 Pressed: Taking Photo...")
-                
-                // Blink FRONT LED to indicate photo capture
-                LEDUtils.setled(LEDUtils.FRONT, true)
-                Handler(Looper.getMainLooper()).postDelayed({
-                    LEDUtils.setled(LEDUtils.FRONT, false)
-                }, 500) // Turn off after 500ms
 
                 photoHandler?.takePhoto()
                 return true
@@ -82,7 +53,7 @@ class MyAccessibilityService : AccessibilityService() {
                 
                 // 2. Create the Preview (UI) Use Case
                 val surfaceProvider = mlKitProcessor?.getSurfaceProvider()
-                var previewUseCase: androidx.camera.core.Preview? = null
+                var previewUseCase: Preview? = null
                 if (surfaceProvider != null) {
                     previewUseCase = analysisHandler?.createPreview(surfaceProvider)
                 }
@@ -105,37 +76,12 @@ class MyAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun setupVoiceActivation() {
-        try {
-            voiceActivation = VoiceActivation.create(VAD_DEVICE_PATH, VAD_BAUD_RATE)
-            
-            voiceActivation?.events { e ->
-                when (e) {
-                    is VoiceActivation.Event.Command -> {
-                        Log.i(TAG, "cmdId=${e.cmdId}")
-                        if (e.cmdId == CMD_HEY_I_SEE) {
-                            Log.d(TAG, "Wake word detected!")
-                        }
-                    }
-                    is VoiceActivation.Event.Error -> Log.e(TAG, "UART error: ${e.message}")
-                    VoiceActivation.Event.Started -> Log.i(TAG, "VoiceActivation started")
-                    VoiceActivation.Event.Stopped -> Log.i(TAG, "VoiceActivation stopped")
-                }
-            }
-
-            voiceActivation?.start()
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start VAD", e)
-        }
-    }
-
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // Use this to intercept UI events
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         Log.d(TAG, "Accessibility Service Unbound")
-        voiceActivation?.stop()
         
         mlKitProcessor?.stop()
         analysisHandler?.shutdown()
@@ -149,7 +95,6 @@ class MyAccessibilityService : AccessibilityService() {
     }
 
     companion object {
-        private const val TAG = "MyAccessabilityService"
-        private const val CMD_HEY_I_SEE = 2
+        private const val TAG = "MyAccessibilityService"
     }
 }

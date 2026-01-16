@@ -1,4 +1,4 @@
-package com.example.aisee_template_codebase.ml
+package org.aisee.template_codebase.ml
 
 import android.content.Context
 import android.graphics.Canvas

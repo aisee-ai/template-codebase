@@ -1,9 +1,7 @@
-package com.example.aisee_template_codebase.utils;
-
-import java.io.IOException;
+package org.aisee.template_codebase.utils;
 
 // We need to import the ShellOperator to run commands with root privileges.
-import com.example.aisee_template_codebase.utils.ShellOperator;
+
 
 public class LEDUtils {
 

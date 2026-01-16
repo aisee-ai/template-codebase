@@ -1,4 +1,4 @@
-package com.example.aisee_template_codebase.camera
+package org.aisee.template_codebase.camera
 
 import android.util.Size
 import androidx.camera.core.ImageAnalysis

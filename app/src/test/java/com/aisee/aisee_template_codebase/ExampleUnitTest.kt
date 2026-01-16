@@ -1,4 +1,4 @@
-package com.example.aisee_template_codebase
+package com.aisee.aisee_template_codebase
 
 import org.junit.Test
 
