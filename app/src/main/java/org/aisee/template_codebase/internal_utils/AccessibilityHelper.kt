@@ -1,4 +1,4 @@
-package org.aisee.template_codebase.utils
+package org.aisee.template_codebase.internal_utils
 
 import android.content.ComponentName
 import android.content.Context

@@ -1,15 +1,21 @@
-package org.aisee
+package org.aisee.template_codebase
 
 import android.util.Log
-import org.aisee.template_codebase.utils.*
 import com.example.voice_activation_uart.VoiceActivation
+import org.aisee.template_codebase.internal_utils.CMD_HEY_I_SEE
+import org.aisee.template_codebase.internal_utils.CMD_SLEEP
+import org.aisee.template_codebase.internal_utils.CMD_VOLUME_DOWN
+import org.aisee.template_codebase.internal_utils.CMD_VOLUME_UP
+import org.aisee.template_codebase.internal_utils.CMD_WAKE_UP
+import org.aisee.template_codebase.internal_utils.VAD_BAUD_RATE
+import org.aisee.template_codebase.internal_utils.VAD_DEVICE_PATH
 
 class VoiceActivation {
 
     private var voiceActivation: VoiceActivation? = null
 
     fun start() {
-        voiceActivation = VoiceActivation.create(VAD_DEVICE_PATH, VAD_BAUD_RATE)
+        voiceActivation = VoiceActivation.Companion.create(VAD_DEVICE_PATH, VAD_BAUD_RATE)
 
         voiceActivation?.events { event ->
             when (event) {

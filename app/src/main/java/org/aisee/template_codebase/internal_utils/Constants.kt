@@ -1,4 +1,4 @@
-package org.aisee.template_codebase.utils
+package org.aisee.template_codebase.internal_utils
 
 // Voice Activation Command IDs
 const val CMD_WAKE_UP = 1       // I-SEE-WAKE-UP

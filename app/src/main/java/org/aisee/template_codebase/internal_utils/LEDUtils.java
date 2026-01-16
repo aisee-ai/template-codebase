@@ -1,4 +1,4 @@
-package org.aisee.template_codebase.utils;
+package org.aisee.template_codebase.internal_utils;
 
 // We need to import the ShellOperator to run commands with root privileges.
 
