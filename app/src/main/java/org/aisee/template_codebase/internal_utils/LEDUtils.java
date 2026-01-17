@@ -55,6 +55,49 @@ public class LEDUtils {
     }
 
     /**
+     * Control the vibration motor with specified duration and intensity.
+     * 
+     * @param durationMs Duration of vibration in milliseconds (0 to stop vibration)
+     * @param intensity Vibration intensity (0-255, where 255 is maximum)
+     */
+    public static void setVibration(int durationMs, int intensity) {
+        String vibratorDurationFile = "/sys/class/leds/vibrator/duration";
+        String vibratorBrightnessFile = "/sys/class/leds/vibrator/brightness";
+        String vibratorActivateFile = "/sys/class/leds/vibrator/activate";
+
+        if (durationMs <= 0 || intensity <= 0) {
+            // Stop vibration
+            writeFile(vibratorDurationFile, "0");
+            writeFile(vibratorActivateFile, "0");
+            return;
+        }
+
+        // Clamp intensity to valid range (0-255)
+        intensity = Math.max(0, Math.min(255, intensity));
+
+        // Set duration, brightness, then activate
+        writeFile(vibratorDurationFile, String.valueOf(durationMs));
+        writeFile(vibratorBrightnessFile, String.valueOf(intensity));
+        writeFile(vibratorActivateFile, "1");
+    }
+
+    /**
+     * Trigger vibration with maximum intensity for specified duration.
+     * 
+     * @param durationMs Duration of vibration in milliseconds
+     */
+    public static void setVibration(int durationMs) {
+        setVibration(durationMs, 255); // Use maximum intensity
+    }
+
+    /**
+     * Stop the vibration motor immediately.
+     */
+    public static void stopVibration() {
+        setVibration(0, 0);
+    }
+
+    /**
      * THE FIX: This function now uses ShellOperator to execute commands as root.
      * Standard Java FileWriter does not have permission to write to /sys/.
      */
